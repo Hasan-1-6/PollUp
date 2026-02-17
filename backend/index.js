@@ -23,7 +23,7 @@ app.use(express.json());
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
-    cors : {origin : "url"} // CORS for socket
+    cors : {origin : url} // CORS for socket
 });
 
 app.set("io", io); 
