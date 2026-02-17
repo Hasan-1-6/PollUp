@@ -13,7 +13,7 @@ const app = express();
 
 
 app.use(cors({
-    origin : "https://poll-up-lime.vercel.app/",
+    origin : "https://poll-up-lime.vercel.app",
 }));
 
 app.use(express.json());
