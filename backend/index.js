@@ -13,15 +13,14 @@ const app = express();
 
 
 app.use(cors({
-    origin : "http://localhost:5173",
-    credentials : true
+    origin : "https://poll-up-lime.vercel.app/",
 }));
 
 app.use(express.json());
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
-    cors : {origin : "http://localhost:5173"} // CORS origin
+    cors : {origin : "https://poll-up-lime.vercel.app/"} // CORS for socket
 });
 
 app.set("io", io); 
