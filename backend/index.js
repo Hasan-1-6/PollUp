@@ -20,7 +20,7 @@ app.use(express.json());
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
-    cors : {origin : "https://poll-up-lime.vercel.app/"} // CORS for socket
+    cors : {origin : "https://poll-up-lime.vercel.app"} // CORS for socket
 });
 
 app.set("io", io); 
