@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast'; // Import toast
-
+import socket from '../socket/socket.js'
 
 const PollVote = () => {
   const { poll_id } = useParams();
@@ -26,7 +26,6 @@ const PollVote = () => {
         toast.error('Failed to fetch poll', data.message);
         return;
       }
-      console.log(data)
       setPoll(data); // Assuming backend returns { poll: ... }
 
     } catch (err) {
@@ -41,7 +40,48 @@ const PollVote = () => {
 
   useEffect(() => {
     fetchPollDetails();
-  }, [poll_id, navigate]); // Re-run effect if poll_id or navigate changes
+  }, [poll_id, navigate]); 
+
+  useEffect(() => {
+  socket.emit("join-poll", poll_id);
+  socket.on("poll-update", (updatedPoll) => {
+    setPoll(updatedPoll);
+  });
+  return () => { //cleanup function to remove listeners when changing component
+    socket.off("poll-update");
+  };
+}, [poll_id]);
+
+  useEffect(() => {
+    checkVoter()
+  }, [])
+
+  const checkVoter = async () => {
+    if(!localStorage.getItem("deviceId")) return;
+    setLoading(true);
+    try{
+       const resp = await fetch(`${import.meta.env.VITE_APP_BACKEND_URL}/api/checkVote`, { // Assuming singular 'poll' for vote
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ poll_id : poll_id , voter_id : localStorage.getItem("deviceId")})
+        });
+        
+        const data = await resp.json()
+        if(!resp.ok){
+          return;
+        }
+        console.log(data.voted)
+        if(data.voted) setVoted(true)
+    }
+    catch (err) {
+      toast.error(`Error submitting vote: ${err.message}`);
+    }
+    finally { 
+      setLoading(false);
+    }
+  }
 
   const getDeviceId = () =>{
     let id = localStorage.getItem("deviceId");
@@ -77,6 +117,7 @@ const PollVote = () => {
         toast.success('Vote submitted successfully!');
         setVoted(true);
 
+        setPoll(data);
         // setPoll(prevPoll => ({
         //   ...prevPoll,
         //   options: prevPoll.options.map(opt =>
@@ -95,7 +136,6 @@ const PollVote = () => {
   }
 
   if (error) {
-    // This case might not be reached if navigate('/404') is used
     return <div className="min-h-screen bg-linear-to-br from-gray-900 to-black flex items-center justify-center p-4 text-red-500">Error: {error}</div>;
   }
 
@@ -111,7 +151,7 @@ const PollVote = () => {
         <h2 className="text-3xl font-extrabold text-white mb-6 text-center">{poll.title}</h2>
         {voted ? (
           <div className="poll-results mt-6">
-            {poll.options.map(option, id => (
+            {poll.options.map((option, id) => (
               <div key={id} className="mb-4">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-gray-200 text-lg">{option.optionTitle}</span>

@@ -12,15 +12,18 @@ configDotenv(); // Load environment variables
 const app = express(); 
 
 
+const url = process.env.NODE_ENV === "production" ? "https://poll-up-lime.vercel.app" : "http://localhost:5173"
+console.log(url)
 app.use(cors({
-    origin : "https://poll-up-lime.vercel.app",
+    origin : url,
+    credentials : true
 }));
 
 app.use(express.json());
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
-    cors : {origin : "https://poll-up-lime.vercel.app"} // CORS for socket
+    cors : {origin : "url"} // CORS for socket
 });
 
 app.set("io", io); 

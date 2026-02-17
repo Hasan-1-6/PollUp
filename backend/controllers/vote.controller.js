@@ -5,7 +5,7 @@ import Votes from "../models/votes.model.js";
 export default async function castVote(req, res){
     const {poll_id, option_id, voter_id} = req.body;
 
-    // const io = req.app.get("io");
+    const io = req.app.get("io");
 
     if(!poll_id || !option_id || !voter_id){
         return res.status(400).json("Insufficient data")
@@ -38,8 +38,8 @@ export default async function castVote(req, res){
             pollid: poll_id,
             voterid: voter_id
         });
-        // io.to(poll_id).emit("poll-update", updatedPoll )
-        return res.status(201).json("Vote casted succesfully")
+        io.to(poll_id).emit("poll-update", updatedPoll)
+        return res.status(201).json(updatedPoll);
     }
     catch(err){
         return res.status(500).json(err)
