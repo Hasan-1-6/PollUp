@@ -1,47 +1,39 @@
 
 import Poll from "../models/poll.model.js"
 import Votes from "../models/votes.model.js";
+import redis from "../db/redis.js";
+import { voteBatcher } from "../voteBatcher/voteBatcher.js";
 
 export default async function castVote(req, res){
     const {poll_id, option_id, voter_id} = req.body;
 
-    const io = req.app.get("io");
 
     if(!poll_id || !option_id || !voter_id){
         return res.status(400).json("Insufficient data")
     }
 
-    const poll = await Poll.findOne({ poll_id : poll_id });
-    if(!poll) return res.status(404).json("Poll not found");
-
-    if(Date.now() > poll.validity.getTime()){
-        return res.status(400).json("Poll has been closed");
-    }
-
-    const alreadyVoted = await Votes.findOne({ pollid: poll_id, voterid: voter_id });
-    if (alreadyVoted) {
-        return res.status(403).json("Already voted");
-    }
-
     try{
-        const updatedPoll = await Poll.findOneAndUpdate(
-        {
-            poll_id, "options._id": option_id
-        },
-        {
-            $inc: { "options.$.voteCount": 1 }
-        },
-            { new: true } //this returns new data after update
-        );
+        const pollData = await redis.json.get(`poll:${poll_id}`)
+        if(!pollData) return res.status(400).json({ "message" : "Invalid Poll" });
 
-        await Votes.create({
-            pollid: poll_id,
-            voterid: voter_id
-        });
-        io.to(poll_id).emit("poll-update", updatedPoll)
-        return res.status(201).json(updatedPoll);
+        if(Date.now() > new Date(pollData.validity).getTime()){
+            return res.status(400).json("Poll has been closed");
+        }
+        
+        // vote.controller.js, before Votes.create
+        if(!pollData.options?.[option_id]){
+            return res.status(400).json({ message: "Invalid option" });
+        }
+        await Votes.create({ pollid: poll_id, voterid: voter_id }); // dedup gate first
+        
+        voteBatcher(poll_id, option_id);
+        
+        return res.status(201).json({option_id});
     }
     catch(err){
+        if(err.code === 11000){
+            return res.status(403).json("Already voted");
+        }
         return res.status(500).json(err)
     }
 }
